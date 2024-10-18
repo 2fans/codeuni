@@ -17,15 +17,23 @@ try:
     connection.read_until(b'Password: ', timeout=5)
     connection.write(password.encode('ascii') + b'\n')
 
-    # Wait for prompt to be ready for commands (adjust if needed)
+    # Wait for the prompt to be ready for commands
     time.sleep(2)
 
-    # Send a command and read output
+    # Send a command and handle --More-- prompt
     connection.write(b'show version\n')
-    time.sleep(1)  # Small delay to wait for command output
+    time.sleep(1)
 
-    output = connection.read_very_eager().decode('ascii')
-    print(output)
+    output = b""
+    while True:
+        chunk = connection.read_very_eager()
+        output += chunk
+        if b'--More--' in chunk:
+            connection.write(b' ')  # Send space to get more output
+        else:
+            break
+
+    print(output.decode('ascii'))
 
     # Close the connection
     connection.close()
