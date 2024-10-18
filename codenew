@@ -1,5 +1,4 @@
 import telnetlib
-import sys
 import time
 
 host = "192.168.56.101"
@@ -7,62 +6,53 @@ username = "tufan"
 password = "123"
 
 try:
-    # Open a Telnet connection
     tn = telnetlib.Telnet(host)
-    print(f"Connected to {host}")
+    print("Connected to " + host)
     
-    # Login process
     tn.read_until(b"Username:")
     tn.write(username.encode('ascii') + b"\n")
     
     tn.read_until(b"Password:")
     tn.write(password.encode('ascii') + b"\n")
     
-    # Allow time for the prompt to appear
     time.sleep(1)
     output = tn.read_very_eager().decode('ascii')
     print(output)
 
-    # Send the "show running-config" command
     tn.write(b"show running-config\n")
     
-    # Give some time for the router to respond
     time.sleep(3)
     
-    # Read the output of the running config
     running_config = tn.read_very_eager().decode('ascii')
     print(running_config)
     
-    # Save the running config to a local file
-    with open("running_config.txt", "w") as file:
-        file.write(running_config)
+    file = open("running_config.txt", "w")
+    file.write(running_config)
+    file.close()
     print("Running configuration saved to running_config.txt")
 
-    # Now, interactive mode: Read user input and send it to the Telnet session
     while True:
-        # Take input from the user (just like an SSH shell)
         command = input("Enter command: ")
-        if command.lower() in ['exit', 'quit']:
+        if command.lower() == "exit" or command.lower() == "quit":
             print("Exiting Telnet session...")
             tn.write(b"exit\n")
             break
         
-        # Send the command to the Telnet session
         tn.write(command.encode('ascii') + b"\n")
         
-        # Give some time for the router to respond
         time.sleep(1)
         
-        # Read and display the output
         output = tn.read_very_eager().decode('ascii')
         print(output)
 
-except Exception as e:
-    print(f"An error occurred: {e}")
+except:
+    print("An error occurred.")
 
 finally:
-    # Close the connection when done
-    tn.close()
+    try:
+        tn.close()
+    except:
+        pass
     print("Connection closed.")
 
 
