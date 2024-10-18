@@ -1,42 +1,25 @@
 import telnetlib
-import time
 
-hostname = '192.168.56.101'
-username = 'tufan'
-password = '123'
+host = "192.168.1.1"
+username = "tufan"
+password = "123"
+command = "show running-config"
 
-try:
-    # Connect to the device
-    connection = telnetlib.Telnet(hostname, timeout=10)
+tn = telnetlib.Telnet(host)
 
-    # Read until prompted for username
-    connection.read_until(b'Username: ', timeout=5)
-    connection.write(username.encode('ascii') + b'\n')
+tn.read_until(b"Username:")
+tn.write(username.encode('ascii') + b"\n")
 
-    # Read until prompted for password
-    connection.read_until(b'Password: ', timeout=5)
-    connection.write(password.encode('ascii') + b'\n')
+tn.read_until(b"Password:")
+tn.write(password.encode('ascii') + b"\n")
 
-    # Wait for the prompt to be ready for commands
-    time.sleep(2)
+tn.write(command.encode('ascii') + b"\n")
 
-    # Send a command and handle --More-- prompt
-    connection.write(b'show version\n')
-    time.sleep(1)
+output = tn.read_all().decode('ascii')
 
-    output = b""
-    while True:
-        chunk = connection.read_very_eager()
-        output += chunk
-        if b'--More--' in chunk:
-            connection.write(b' ')  # Send space to get more output
-        else:
-            break
+with open("running_config.txt", "w") as file:
+    file.write(output)
 
-    print(output.decode('ascii'))
+tn.close()
 
-    # Close the connection
-    connection.close()
-
-except Exception as e:
-    print(f"Error: {e}")
+print("Running configuration saved to running_config.txt")
