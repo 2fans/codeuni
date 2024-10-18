@@ -1,25 +1,41 @@
 import telnetlib
 
-host = "192.168.1.1"
+host = "192.168.56.101"
 username = "tufan"
 password = "123"
 command = "show running-config"
 
-tn = telnetlib.Telnet(host)
+# Open a Telnet connection
+try:
+    tn = telnetlib.Telnet(host)
+    print(f"Connected to {host}")
+except:
+    print(f"Failed to connect to {host}")
+    exit()
 
+# Login process
 tn.read_until(b"Username:")
 tn.write(username.encode('ascii') + b"\n")
+print(f"Sent username: {username}")
 
 tn.read_until(b"Password:")
 tn.write(password.encode('ascii') + b"\n")
+print(f"Sent password for user: {username}")
 
+# Send the command
 tn.write(command.encode('ascii') + b"\n")
+print(f"Sent command: {command}")
 
+# Wait for the command to execute and read the output
 output = tn.read_all().decode('ascii')
+print("Output received from the router:\n")
+print(output)
 
+# Save the output to a local file
 with open("running_config.txt", "w") as file:
     file.write(output)
 
 tn.close()
 
 print("Running configuration saved to running_config.txt")
+
