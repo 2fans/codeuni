@@ -54,6 +54,3 @@ finally:
     except:
         pass
     print("Connection closed.")
-
-
-
