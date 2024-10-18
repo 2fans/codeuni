@@ -25,7 +25,17 @@ if "#" not in output:
 
 print('successfully connected to:', host)
 
+tn.write("configure terminal\n".encode())
+time.sleep(1)
+output = tn.read_until(b"(config)#").decode()
+print(output)
+
 tn.write("no logging console\n".encode())
+time.sleep(1)
+output = tn.read_until(b"(config)#").decode()
+print(output)
+
+tn.write("end\n".encode())
 time.sleep(1)
 output = tn.read_until(b"#").decode()
 print(output)
@@ -53,4 +63,3 @@ while True:
 
 tn.close()
 print("connection closed.")
-
