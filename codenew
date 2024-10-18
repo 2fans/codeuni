@@ -30,7 +30,7 @@ try:
     print("Running configuration saved to running_config.txt")
 
     while True:
-        command = input("Enter command: ")
+        command = input(output.splitlines()[-1])
         if command.lower() in ["exit", "quit"]:
             print("Exiting Telnet session...")
             tn.write(b"exit\n")
