@@ -23,6 +23,21 @@ try:
     output = tn.read_very_eager().decode('ascii')
     print(output)
 
+    # Send the "show running-config" command
+    tn.write(b"show running-config\n")
+    
+    # Give some time for the router to respond
+    time.sleep(3)
+    
+    # Read the output of the running config
+    running_config = tn.read_very_eager().decode('ascii')
+    print(running_config)
+    
+    # Save the running config to a local file
+    with open("running_config.txt", "w") as file:
+        file.write(running_config)
+    print("Running configuration saved to running_config.txt")
+
     # Now, interactive mode: Read user input and send it to the Telnet session
     while True:
         # Take input from the user (just like an SSH shell)
@@ -49,5 +64,6 @@ finally:
     # Close the connection when done
     tn.close()
     print("Connection closed.")
+
 
 
