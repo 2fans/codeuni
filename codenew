@@ -1,14 +1,17 @@
-import paramiko
+import telnetlib
 
 hostname = '192.168.56.101'
 username = 'tufan'
 password = '123'
 
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect(hostname, username=username, password=password)
+connection = telnetlib.Telnet(hostname)
+connection.read_until(b'Username: ')
+connection.write(username.encode('ascii') + b'\n')
+connection.read_until(b'Password: ')
+connection.write(password.encode('ascii') + b'\n')
 
-stdin, stdout, stderr = client.exec_command('show version')
-print(stdout.read().decode())
+connection.write(b'show version\n')
+output = connection.read_all().decode('ascii')
+print(output)
 
-client.close()
+connection.close()
