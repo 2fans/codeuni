@@ -37,15 +37,19 @@ try:
 
         # Use send_command_timing to handle commands that might have interactive prompts
         output = connection.send_command_timing(command)
-        
-        # Handle additional prompts for interactive commands
+
+        # Handle specific prompts after sending a command
         if "Password:" in output:
-            # If enable is requested and password is required
-            output += connection.send_command_timing(password + "\n")
-        if "Configuring from terminal, memory, or network [terminal]?" in output:
-            # Respond to the default terminal prompt
-            output += connection.send_command_timing("\n")
-        
+            # If the router asks for a password, send it
+            output += connection.send_command_timing(password)
+
+        # If switching to enable mode, wait until the prompt changes to '#'
+        if command.lower() == "enable":
+            if "Password:" in output:
+                output += connection.send_command_timing(password + "\n")
+            # Ensure prompt changes to '#'
+            output = connection.send_command_timing("", delay_factor=2)
+
         time.sleep(1)
         print(output)
 
@@ -54,6 +58,7 @@ except Exception as e:
 
 finally:
     print("Connection closed.")
+
 
 
 
