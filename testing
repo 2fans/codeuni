@@ -24,22 +24,28 @@ try:
         # Use send_command_timing for all commands to handle potential prompts
         output = connection.send_command_timing(command)
         
-        # Check for additional prompts and respond accordingly (like configuring terminal)
+        # Handle enable command and password prompt
+        if "Password:" in output:
+            output += connection.send_command_timing(password + "\n")
+        
+        # Check for configuration mode prompt and respond if needed
         if "Configuring from terminal, memory, or network [terminal]?" in output:
             output += connection.send_command_timing("\n")
-        elif "Password:" in output:
-            # If enable is requested, handle password prompt
-            output += connection.send_command_timing(password + "\n")
 
         # Print the final output
         print(output)
+
+        # Special case to save running-config to a file
+        if command.lower() == "show running-config":
+            with open("running_config_backup.txt", "w") as file:
+                file.write(output)
+            print("Running configuration saved locally as running_config_backup.txt")
 
 except Exception as e:
     print(f"Error: {e}")
 
 finally:
     print("Connection closed.")
-
 
 
 
