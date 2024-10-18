@@ -10,39 +10,35 @@ try:
     print("Connected to " + host)
     
     tn.read_until(b"Username:")
-    tn.write(username.encode('ascii') + b"\n")
+    tn.write(username.encode() + b"\n")
     
     tn.read_until(b"Password:")
-    tn.write(password.encode('ascii') + b"\n")
+    tn.write(password.encode() + b"\n")
     
     time.sleep(1)
-    output = tn.read_very_eager().decode('ascii')
+    output = tn.read_until(b">", timeout=5).decode()
     print(output)
 
     tn.write(b"show running-config\n")
     
     time.sleep(3)
-    
-    running_config = tn.read_very_eager().decode('ascii')
+    running_config = tn.read_until(b">", timeout=10).decode()
     print(running_config)
     
-    file = open("running_config.txt", "w")
-    file.write(running_config)
-    file.close()
+    with open("running_config.txt", "w") as file:
+        file.write(running_config)
     print("Running configuration saved to running_config.txt")
 
     while True:
         command = input("Enter command: ")
-        if command.lower() == "exit" or command.lower() == "quit":
+        if command.lower() in ["exit", "quit"]:
             print("Exiting Telnet session...")
             tn.write(b"exit\n")
             break
         
-        tn.write(command.encode('ascii') + b"\n")
-        
+        tn.write(command.encode() + b"\n")
         time.sleep(1)
-        
-        output = tn.read_very_eager().decode('ascii')
+        output = tn.read_until(b">", timeout=5).decode()
         print(output)
 
 except:
