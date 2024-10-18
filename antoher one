@@ -101,4 +101,4 @@ if choice == "1":
 elif choice == "2":
     netmiko_connection()
 else:
-    print("invalid choice, exiting.")
+    print("pls pick 1 or 2")
