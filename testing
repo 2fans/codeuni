@@ -13,6 +13,9 @@ try:
     connection = ConnectHandler(**device)
     print("Connected to " + device['host'])
     
+    # Enter privileged EXEC mode (enable)
+    connection.enable()
+    
     # Retrieve the running configuration
     running_config = connection.send_command("show running-config")
     print(running_config)
@@ -25,7 +28,7 @@ try:
 
     # Enter interactive mode for more commands
     while True:
-        command = input("CSR1kv> ")
+        command = input("CSR1kv# ")
         if command.lower() in ["exit", "quit"]:
             print("Exiting")
             connection.disconnect()
@@ -39,5 +42,6 @@ except Exception as e:
 
 finally:
     print("Connection closed.")
+
 
 
