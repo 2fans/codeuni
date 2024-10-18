@@ -17,10 +17,11 @@ try:
     running_config = connection.send_command("show running-config")
     print(running_config)
     
-    # Save the running configuration to a file
-    with open("running_config.txt", "w") as file:
+    # Save the running configuration to a file with a different name
+    filename = "running_config_backup.txt"
+    with open(filename, "w") as file:
         file.write(running_config)
-    print("Running configuration saved locally")
+    print(f"Running configuration saved locally as {filename}")
 
     # Enter interactive mode for more commands
     while True:
@@ -38,4 +39,5 @@ except Exception as e:
 
 finally:
     print("Connection closed.")
+
 
