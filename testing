@@ -13,34 +13,25 @@ try:
     connection = ConnectHandler(**device)
     print("Connected to " + device['host'])
     
-    # Enter privileged EXEC mode (enable)
-    connection.enable()
-    
-    # Retrieve the running configuration
-    running_config = connection.send_command("show running-config")
-    print(running_config)
-    
-    # Save the running configuration to a file with a different name
-    filename = "running_config_backup.txt"
-    with open(filename, "w") as file:
-        file.write(running_config)
-    print(f"Running configuration saved locally as {filename}")
-
     # Enter interactive mode for more commands
     while True:
-        command = input("CSR1kv# ")
+        command = input("CSR1kv> ")
         if command.lower() in ["exit", "quit"]:
             print("Exiting")
             connection.disconnect()
             break
         
-        # Use send_command_timing for commands that might require additional input
+        # Use send_command_timing for all commands to handle potential prompts
         output = connection.send_command_timing(command)
         
-        # Check for additional prompts and respond accordingly
+        # Check for additional prompts and respond accordingly (like configuring terminal)
         if "Configuring from terminal, memory, or network [terminal]?" in output:
             output += connection.send_command_timing("\n")
-        
+        elif "Password:" in output:
+            # If enable is requested, handle password prompt
+            output += connection.send_command_timing(password + "\n")
+
+        # Print the final output
         print(output)
 
 except Exception as e:
