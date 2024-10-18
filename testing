@@ -25,17 +25,19 @@ if "#" not in output:
 
 print('successfully connected to:', host)
 
-tn.write("copy flash:CONFIG3 running-config\n".encode())
-time.sleep(2)
-tn.write("\n".encode())
-time.sleep(3)
+tn.write("no logging console\n".encode())
+time.sleep(1)
 output = tn.read_until(b"#").decode()
 print(output)
 
-tn.write("show running-config | section line vty\n".encode())
-time.sleep(3)
+tn.write("show running-config\n".encode())
+time.sleep(5)
 output = tn.read_until(b"#").decode()
-print(output)
+
+# Save the running configuration to a file
+with open("running_config.txt", "w") as file:
+    file.write(output)
+print("Running configuration saved to running_config.txt")
 
 while True:
     command = input(output.splitlines()[-1])
@@ -51,3 +53,4 @@ while True:
 
 tn.close()
 print("connection closed.")
+
