@@ -1,41 +1,53 @@
 import telnetlib
+import sys
+import time
 
 host = "192.168.56.101"
 username = "tufan"
 password = "123"
-command = "show running-config"
 
-# Open a Telnet connection
 try:
+    # Open a Telnet connection
     tn = telnetlib.Telnet(host)
     print(f"Connected to {host}")
-except:
-    print(f"Failed to connect to {host}")
-    exit()
+    
+    # Login process
+    tn.read_until(b"Username:")
+    tn.write(username.encode('ascii') + b"\n")
+    
+    tn.read_until(b"Password:")
+    tn.write(password.encode('ascii') + b"\n")
+    
+    # Allow time for the prompt to appear
+    time.sleep(1)
+    output = tn.read_very_eager().decode('ascii')
+    print(output)
 
-# Login process
-tn.read_until(b"Username:")
-tn.write(username.encode('ascii') + b"\n")
-print(f"Sent username: {username}")
+    # Now, interactive mode: Read user input and send it to the Telnet session
+    while True:
+        # Take input from the user (just like an SSH shell)
+        command = input("Enter command: ")
+        if command.lower() in ['exit', 'quit']:
+            print("Exiting Telnet session...")
+            tn.write(b"exit\n")
+            break
+        
+        # Send the command to the Telnet session
+        tn.write(command.encode('ascii') + b"\n")
+        
+        # Give some time for the router to respond
+        time.sleep(1)
+        
+        # Read and display the output
+        output = tn.read_very_eager().decode('ascii')
+        print(output)
 
-tn.read_until(b"Password:")
-tn.write(password.encode('ascii') + b"\n")
-print(f"Sent password for user: {username}")
+except Exception as e:
+    print(f"An error occurred: {e}")
 
-# Send the command
-tn.write(command.encode('ascii') + b"\n")
-print(f"Sent command: {command}")
+finally:
+    # Close the connection when done
+    tn.close()
+    print("Connection closed.")
 
-# Wait for the command to execute and read the output
-output = tn.read_all().decode('ascii')
-print("Output received from the router:\n")
-print(output)
-
-# Save the output to a local file
-with open("running_config.txt", "w") as file:
-    file.write(output)
-
-tn.close()
-
-print("Running configuration saved to running_config.txt")
 
