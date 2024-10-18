@@ -1,17 +1,34 @@
 import telnetlib
+import time
 
 hostname = '192.168.56.101'
 username = 'tufan'
 password = '123'
 
-connection = telnetlib.Telnet(hostname)
-connection.read_until(b'Username: ')
-connection.write(username.encode('ascii') + b'\n')
-connection.read_until(b'Password: ')
-connection.write(password.encode('ascii') + b'\n')
+try:
+    # Connect to the device
+    connection = telnetlib.Telnet(hostname, timeout=10)
 
-connection.write(b'show version\n')
-output = connection.read_all().decode('ascii')
-print(output)
+    # Read until prompted for username
+    connection.read_until(b'Username: ', timeout=5)
+    connection.write(username.encode('ascii') + b'\n')
 
-connection.close()
+    # Read until prompted for password
+    connection.read_until(b'Password: ', timeout=5)
+    connection.write(password.encode('ascii') + b'\n')
+
+    # Wait for prompt to be ready for commands (adjust if needed)
+    time.sleep(2)
+
+    # Send a command and read output
+    connection.write(b'show version\n')
+    time.sleep(1)  # Small delay to wait for command output
+
+    output = connection.read_very_eager().decode('ascii')
+    print(output)
+
+    # Close the connection
+    connection.close()
+
+except Exception as e:
+    print(f"Error: {e}")
