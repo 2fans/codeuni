@@ -1,0 +1,104 @@
+from netmiko import ConnectHandler
+import telnetlib
+import time
+
+host = "192.168.56.101"
+username = "tufan"
+password = "123"
+
+def netmiko_connection():
+    device = {
+        'device_type': 'cisco_ios',
+        'host': host,
+        'username': username,
+        'password': password,
+        'secret': password,
+    }
+
+    try:
+        connection = ConnectHandler(**device)
+        print("connected to " + host)
+
+        connection.enable()
+
+        running_config = connection.send_command("show running-config")
+        print(running_config)
+        
+        with open("config_number_two.txt", "w") as file:
+            file.write(running_config)
+        print("running configuration saved locally as config number two")
+
+        while True:
+            command = input("CSR1kv> ")
+            if command.lower() in ["exit", "quit"]:
+                print("exiting")
+                connection.disconnect()
+                break
+
+            output = connection.send_command(command)
+            print(output)
+
+    except Exception as e:
+        print("error: " + str(e))
+
+    finally:
+        print("connection closed")
+
+def telnet_connection():
+    try:
+        tn = telnetlib.Telnet(host)
+        print("connected to " + host)
+        
+        tn.read_until(b"Username:")
+        tn.write(username.encode() + b"\n")
+        
+        tn.read_until(b"Password:")
+        tn.write(password.encode() + b"\n")
+        
+        time.sleep(1)
+        output = tn.read_until(b">", timeout=5).decode()
+        print(output)
+
+        tn.write(b"show running-config\n")
+        
+        time.sleep(3)
+        running_config = tn.read_until(b">", timeout=10).decode()
+        print(running_config)
+        
+        with open("config_number_one.txt", "w") as file:
+            file.write(running_config)
+        print("running configuration saved locally as config number one")
+
+        while True:
+            command = input(output.splitlines()[-1])
+            if command.lower() in ["exit", "quit"]:
+                print("exiting")
+                tn.write(b"exit\n")
+                break
+            
+            tn.write(command.encode() + b"\n")
+            time.sleep(1)
+            output = tn.read_until(b">", timeout=5).decode()
+            print(output)
+
+    except:
+        print("error.")
+
+    finally:
+        try:
+            tn.close()
+        except:
+            pass
+        print("connection closed")
+
+print("do you want ssh or netmiko connection?")
+print("1. ssh (telnet)")
+print("2. netmiko")
+choice = input("enter your choice (1 or 2): ")
+
+if choice == "1":
+    telnet_connection()
+elif choice == "2":
+    netmiko_connection()
+else:
+    print("invalid choice, exiting.")
