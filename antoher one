@@ -12,18 +12,16 @@ def netmiko_connection():
         'host': host,
         'username': username,
         'password': password,
-        'secret': password,
     }
 
     try:
         connection = ConnectHandler(**device)
         print("connected to " + host)
 
-        connection.enable()
-
         running_config = connection.send_command("show running-config")
+        time.sleep(1)
         print(running_config)
-        
+
         with open("config_number_two.txt", "w") as file:
             file.write(running_config)
         print("running configuration saved locally as config number two")
@@ -35,7 +33,22 @@ def netmiko_connection():
                 connection.disconnect()
                 break
 
-            output = connection.send_command(command)
+            output = connection.send_command_timing(command)
+
+            if "Password:" in output:
+                output += connection.send_command_timing(password)
+
+            if command.lower() == "enable":
+                if "Password:" in output:
+                    output += connection.send_command_timing(password + "\n")
+                output = connection.send_command_timing("", delay_factor=2)
+                prompt = connection.find_prompt()
+                if prompt.endswith("#"):
+                    print("entered privileged exec mode")
+                else:
+                    print("errored again aaaa")
+
+            time.sleep(1)
             print(output)
 
     except Exception as e:
@@ -91,6 +104,7 @@ def telnet_connection():
             pass
         print("connection closed")
 
+
 print("do you want ssh or netmiko connection?")
 print("1. ssh (telnet)")
 print("2. netmiko")
@@ -101,4 +115,4 @@ if choice == "1":
 elif choice == "2":
     netmiko_connection()
 else:
-    print("pls pick 1 or 2")
+    print("type in 1 or 2 not 3")
