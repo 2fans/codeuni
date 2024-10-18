@@ -1,34 +1,14 @@
-import pexpect
+import paramiko
 
-ip_address = '192.168.56.101'
+hostname = '192.168.56.101'
 username = 'tufan'
 password = '123'
 
-def telnet_login():
-    try:
-        session = pexpect.spawn('telnet ' + ip_address, timeout=30)
-        result = session.expect(['[Uu]sername:', pexpect.TIMEOUT])
-        if result != 0:
-            print('FAILURE! Unable to find Username prompt.')
-            return
-        session.sendline(username)
-        result = session.expect(['[Pp]assword:', pexpect.TIMEOUT])
-        if result != 0:
-            print('FAILURE! Unable to find Password prompt.')
-            return
-        session.sendline(password)
-        result = session.expect(['>', '#', pexpect.TIMEOUT])
-        if result == 2:
-            print('FAILURE! Unable to log in with provided credentials.')
-            return
-        print("Successfully logged in via Telnet.")
-        session.sendline('exit')
-        session.close()
-    except pexpect.exceptions.TIMEOUT:
-        print(f"An error occurred: Timeout while connecting via Telnet.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+client.connect(hostname, username=username, password=password)
 
-if __name__ == "__main__":
-    print("Connecting using Telnet...")
-    telnet_login()
+stdin, stdout, stderr = client.exec_command('show version')
+print(stdout.read().decode())
+
+client.close()
