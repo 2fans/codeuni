@@ -13,62 +13,45 @@ device = {
 }
 
 try:
-    # Establish an SSH connection
     connection = ConnectHandler(**device)
-    print("Connected to " + host)
+    print("connected to " + host)
 
-    # Retrieve the running configuration
     running_config = connection.send_command("show running-config")
     time.sleep(1)
     print(running_config)
 
-    # Save the running configuration to a file
     with open("running_config_backup.txt", "w") as file:
         file.write(running_config)
-    print("Running configuration saved locally as running_config_backup.txt")
+    print("running configuration saved locally")
 
-    # Interactive command input
     while True:
         command = input("CSR1kv> ")
         if command.lower() in ["exit", "quit"]:
-            print("Exiting")
+            print("exiting")
             connection.disconnect()
             break
 
-        # Use send_command_timing to handle commands that might have interactive prompts
         output = connection.send_command_timing(command)
 
-        # Handle specific prompts after sending a command
         if "Password:" in output:
-            # If the router asks for a password, send it
             output += connection.send_command_timing(password)
 
-        # If switching to enable mode, wait until the prompt changes to '#'
         if command.lower() == "enable":
             if "Password:" in output:
                 output += connection.send_command_timing(password + "\n")
-            # Ensure prompt changes to '#'
             output = connection.send_command_timing("", delay_factor=2)
             prompt = connection.find_prompt()
             if prompt.endswith("#"):
-                print("Successfully entered privileged EXEC mode.")
+                print("entered privileged exec mode")
             else:
-                print("Failed to enter privileged EXEC mode. Check the enable password.")
+                print("errored again aaaa")
 
-        # Provide help for common Cisco commands if user attempts to use Linux commands
-        if command.lower() == "ifconfig":
-            print("Note: 'ifconfig' is not a valid command for Cisco IOS. Use 'show ip interface brief' instead.")
-
+        
         time.sleep(1)
         print(output)
 
 except Exception as e:
-    print(f"Error: {e}")
+    print("error: " + str(e))
 
 finally:
-    print("Connection closed.")
-
-
-
-
-
+    print("connection closed")
