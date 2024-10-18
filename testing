@@ -34,11 +34,12 @@ try:
             connection.disconnect()
             break
         
-        # Use send_command_timing for commands that might require additional input or multiple steps
-        if command.lower().startswith("configure"):
-            output = connection.send_command_timing(command)
-        else:
-            output = connection.send_command(command)
+        # Use send_command_timing for commands that might require additional input
+        output = connection.send_command_timing(command)
+        
+        # Check for additional prompts and respond accordingly
+        if "Configuring from terminal, memory, or network [terminal]?" in output:
+            output += connection.send_command_timing("\n")
         
         print(output)
 
@@ -47,6 +48,7 @@ except Exception as e:
 
 finally:
     print("Connection closed.")
+
 
 
 
