@@ -1,65 +1,41 @@
-import telnetlib
-import time
+from netmiko import ConnectHandler
 
-host = "192.168.56.101"
-username = "tufan"
-password = "123"
+# Define device details
+device = {
+    'device_type': 'cisco_ios',  # Specify the type of device (cisco_ios for Cisco routers)
+    'host': '192.168.56.101',    # IP address of the device
+    'username': 'tufan',         # Username for SSH
+    'password': '123',           # Password for SSH
+}
 
-tn = telnetlib.Telnet(host)
-print("connected to " + host)
-
-tn.read_until(b"Username:")
-tn.write((username + "\n").encode())
-time.sleep(1)
-output = tn.read_until(b"Password:").decode()
-if "Password:" not in output:
-    print('failed to enter username:', username)
-    exit()
-
-tn.write((password + "\n").encode())
-time.sleep(1)
-output = tn.read_until(b"#").decode()
-if "#" not in output:
-    print('failed to enter password:', password)
-    exit()
-
-print('successfully connected to:', host)
-
-tn.write("configure terminal\n".encode())
-time.sleep(1)
-output = tn.read_until(b"(config)#").decode()
-print(output)
-
-tn.write("no logging console\n".encode())
-time.sleep(1)
-output = tn.read_until(b"(config)#").decode()
-print(output)
-
-tn.write("end\n".encode())
-time.sleep(1)
-output = tn.read_until(b"#").decode()
-print(output)
-
-tn.write("show running-config\n".encode())
-time.sleep(5)
-output = tn.read_until(b"#").decode()
-
-# Save the running configuration to a file
-with open("running_config.txt", "w") as file:
-    file.write(output)
-print("Running configuration saved to running_config.txt")
-
-while True:
-    command = input(output.splitlines()[-1])
-    if command.lower() in ["exit", "quit"]:
-        print("exiting telnet session...")
-        tn.write("exit\n".encode())
-        break
+try:
+    # Establish an SSH connection
+    connection = ConnectHandler(**device)
+    print("Connected to " + device['host'])
     
-    tn.write((command + "\n").encode())
-    time.sleep(1)
-    output = tn.read_until(b">", timeout=5).decode()
-    print(output)
+    # Retrieve the running configuration
+    running_config = connection.send_command("show running-config")
+    print(running_config)
+    
+    # Save the running configuration to a file
+    with open("running_config.txt", "w") as file:
+        file.write(running_config)
+    print("Running configuration saved locally")
 
-tn.close()
-print("connection closed.")
+    # Enter interactive mode for more commands
+    while True:
+        command = input("CSR1kv> ")
+        if command.lower() in ["exit", "quit"]:
+            print("Exiting")
+            connection.disconnect()
+            break
+        
+        output = connection.send_command(command)
+        print(output)
+
+except Exception as e:
+    print(f"Error: {e}")
+
+finally:
+    print("Connection closed.")
+
