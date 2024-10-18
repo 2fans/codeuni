@@ -1,0 +1,69 @@
+import telnetlib
+import time
+
+host = "192.168.56.101"
+username = "tufan"
+password = "123"
+
+try:
+    tn = telnetlib.Telnet(host)
+    print("connected to " + host)
+    
+    # Enter username
+    tn.read_until(b"Username:")
+    tn.write(username.encode() + b"\n")
+    time.sleep(1)
+    output = tn.read_very_eager().decode()
+    if "Password:" not in output:
+        print('failed to enter username:', username)
+        exit()
+    
+    # Enter password
+    tn.write(password.encode() + b"\n")
+    time.sleep(1)
+    output = tn.read_very_eager().decode()
+    if "#" not in output:
+        print('failed to enter password:', password)
+        exit()
+    
+    print('------------------------------------------------------')
+    print('')
+    print('successfully connected to:', host)
+    print('username:', username)
+    print('password:', password)
+    print('')
+    print('------------------------------------------------------')
+
+    # Copy config from flash
+    tn.write(b"copy flash:CONFIG3 running-config\n")
+    time.sleep(3)
+    output = tn.read_very_eager().decode()
+    print(output)
+
+    # Verify configuration
+    tn.write(b"show run | section line vty\n")
+    time.sleep(3)
+    output = tn.read_very_eager().decode()
+    print(output)
+
+    while True:
+        command = input(output.splitlines()[-1])
+        if command.lower() in ["exit", "quit"]:
+            print("exiting telnet session...")
+            tn.write(b"exit\n")
+            break
+        
+        tn.write(command.encode() + b"\n")
+        time.sleep(1)
+        output = tn.read_until(b">", timeout=5).decode()
+        print(output)
+
+except Exception as e:
+    print("an error occurred: ", e)
+
+finally:
+    try:
+        tn.close()
+    except:
+        pass
+    print("connection closed.")
