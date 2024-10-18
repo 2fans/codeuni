@@ -1,45 +1,44 @@
 from netmiko import ConnectHandler
+import time
 
-# Define device details
+host = "192.168.56.101"
+username = "tufan"
+password = "123"
+
 device = {
-    'device_type': 'cisco_ios',  # Specify the type of device (cisco_ios for Cisco routers)
-    'host': '192.168.56.101',    # IP address of the device
-    'username': 'tufan',         # Username for SSH
-    'password': '123',           # Password for SSH
+    'device_type': 'cisco_ios',
+    'host': host,
+    'username': username,
+    'password': password,
 }
 
 try:
     # Establish an SSH connection
     connection = ConnectHandler(**device)
-    print("Connected to " + device['host'])
-    
-    # Enter interactive mode for more commands
+    print("Connected to " + host)
+
+    # Retrieve the running configuration
+    running_config = connection.send_command("show running-config")
+    time.sleep(1)
+    print(running_config)
+
+    # Save the running configuration to a file
+    with open("running_config_backup.txt", "w") as file:
+        file.write(running_config)
+    print("Running configuration saved locally as running_config_backup.txt")
+
+    # Interactive command input
     while True:
         command = input("CSR1kv> ")
         if command.lower() in ["exit", "quit"]:
             print("Exiting")
             connection.disconnect()
             break
-        
-        # Use send_command_timing for all commands to handle potential prompts
-        output = connection.send_command_timing(command)
-        
-        # Handle enable command and password prompt
-        if "Password:" in output:
-            output += connection.send_command_timing(password + "\n")
-        
-        # Check for configuration mode prompt and respond if needed
-        if "Configuring from terminal, memory, or network [terminal]?" in output:
-            output += connection.send_command_timing("\n")
 
-        # Print the final output
+        # Send command to the device
+        output = connection.send_command(command)
+        time.sleep(1)
         print(output)
-
-        # Special case to save running-config to a file
-        if command.lower() == "show running-config":
-            with open("running_config_backup.txt", "w") as file:
-                file.write(output)
-            print("Running configuration saved locally as running_config_backup.txt")
 
 except Exception as e:
     print(f"Error: {e}")
