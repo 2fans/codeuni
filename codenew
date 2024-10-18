@@ -27,12 +27,12 @@ try:
     
     with open("running_config.txt", "w") as file:
         file.write(running_config)
-    print("Running configuration saved to running_config.txt")
+    print("running configuration is saved locallly")
 
     while True:
         command = input(output.splitlines()[-1])
         if command.lower() in ["exit", "quit"]:
-            print("Exiting Telnet session...")
+            print("exiting")
             tn.write(b"exit\n")
             break
         
@@ -42,11 +42,11 @@ try:
         print(output)
 
 except:
-    print("An error occurred.")
+    print("erorr.")
 
 finally:
     try:
         tn.close()
     except:
         pass
-    print("Connection closed.")
+    print("connection closed.")
