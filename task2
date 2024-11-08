@@ -1,7 +1,6 @@
 from netmiko import ConnectHandler
 import telnetlib
 import time
-import difflib
 
 host = "192.168.56.101"
 username = "tufan"
@@ -18,6 +17,16 @@ def netmiko_connection():
     try:
         connection = ConnectHandler(**device)
         print("connected to " + host)
+        
+        #3 THINGS OFF THE GUIDE
+        connection.send_config_set([
+            "service password-encryption",
+            "no service pad",
+            "no cdp run"
+            "logging buffered 4096",  #SYSLOG ENABLED
+            "logging console" #message will be logged on the console now
+        ])
+        print("3 THINGS FROM THE CISCO HARDENING GUIDE ADDED")
 
         running_config = connection.send_command("show running-config")
         time.sleep(1)
@@ -26,22 +35,6 @@ def netmiko_connection():
         with open("config_number_two.txt", "w") as file:
             file.write(running_config)
         print("running configuration saved locally as config number two")
-        
-        # Compare running config with startup config
-        startup_config = connection.send_command("show startup-config")
-        print("\nComparing Running Configuration with Startup Configuration:\n")
-        for line in difflib.unified_diff(running_config.splitlines(), startup_config.splitlines()):
-            print(line)
-            
-        # Compare running config with locally saved config_number_one.txt
-        try:
-            with open("config_number_one.txt", "r") as file:
-                local_config = file.read()
-            print("\nComparing Running Configuration with Local Configuration (Delivery 1):\n")
-            for line in difflib.unified_diff(running_config.splitlines(), local_config.splitlines()):
-                print(line)
-        except FileNotFoundError:
-            print("config_number_one.txt not found for comparison.")
 
         while True:
             command = input("CSR1kv> ")
