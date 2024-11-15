@@ -1,0 +1,40 @@
+print('--- connecting telnet 192.168.56.101 with prne/cisco123!') 
+ 
+session = pexpect.spawn('telnet 192.168.56.101', encoding='utf-8', 
+                        timeout=20) 
+result = session.expect(['Username:', pexpect.TIMEOUT, pexpect.EOF]) 
+ 
+# Check for failure 
+if result != 0: 
+    print('Timout or unexpected reply from device') 
+    exit() 
+ 
+# Login with username 
+session.sendline('prne') 
+result = session.expect('Password:') 
+ 
+# Send password 
+session.sendline('cisco123!') 
+result = session.expect('>') 
+ 
+# Must set terminal length to zero for long replies 
+print('--- setting terminal length to 0') 
+session.sendline('terminal length 0') 
+result = session.expect('>') 
+ 
+# Execute the 'show ip route' command to get routing info 
+print('--- executing: show ip route') 
+session.sendline('show ip route') 
+result = session.expect('>') 
+ 
+# Get output from ip route command 
+print('--- getting ip route command output') 
+show_ip_route_output = session.before 
+ 
+# Display routing information 
+print('') 
+print('IP route output') 
+print('----------------------------------------------------') 
+print(session.before) 
+print('----------------------------------------------------') 
+print('')
