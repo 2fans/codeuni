@@ -1,55 +1,39 @@
-import pexpect
+from netmiko import ConnectHandler
 
-ip_address = '192.168.56.101'
-username = 'tufan'
-password = '123'
-password_enable = '1234'
+# Define the device details
+device = {
+    'device_type': 'cisco_ios',
+    'ip': '192.168.56.101',
+    'username': 'tufan',
+    'password': '123',
+    'secret': '1234',  # Enable password
+}
 
-# Start SSH session and handle SSH key acceptance
-session = pexpect.spawn(f'ssh {username}@{ip_address}', encoding='utf-8', timeout=20)
-result = session.expect(['yes/no', 'Password:', pexpect.TIMEOUT, pexpect.EOF])
-
-if result == 0:  # SSH key not recognized, auto-accept the key
-    session.sendline('yes')
-    session.expect('Password:')
-    
-# Enter login password
-session.sendline(password)
-session.expect('>')
+# Establish SSH connection
+print("Connecting to the device...")
+connection = ConnectHandler(**device)
 
 # Enter enable mode
-session.sendline('enable')
-session.expect('Password:')
-session.sendline(password_enable)
-session.expect('#')
+print("Entering enable mode...")
+connection.enable()
 
-# Enter configuration mode and set hostname to 2fan
-session.sendline('configure terminal')
-session.expect(r'\(config\)#')
-session.sendline('hostname 2fan')
-session.expect(r'2fan\(config\)#')  # Ensure the prompt matches the new hostname
+# Change the hostname to '2fan'
+print("Changing the hostname to '2fan'...")
+config_commands = ['hostname 2fan']
+connection.send_config_set(config_commands)
 
-# Exit configuration mode
-session.sendline('exit')
-session.expect('#')
-
-# Capture and save running configuration
-session.sendline('show running-config')
-session.expect('#', timeout=30)
-running_config = session.before  # Capture the output
-
+# Capture and save the running configuration
+print("Saving the running configuration to a file...")
+output = connection.send_command("show running-config")
 with open('running_config.txt', 'w') as file:
-    file.write(running_config)
+    file.write(output)
 
-# Exit SSH session
-session.sendline('exit')
-session.close()
+# Close the connection
+connection.disconnect()
 
 # Success message
 print("------------------------------------------------------")
-print("SSH session established and device configuration completed.")
-print(f"Device IP: {ip_address}")
-print(f"Username: {username}")
+print("SSH session established and configuration completed.")
 print("Hostname successfully updated to '2fan'.")
 print("Running configuration saved to 'running_config.txt'.")
 print("------------------------------------------------------")
