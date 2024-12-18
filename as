@@ -5,56 +5,44 @@ username = 'tufan'
 password = '123'
 password_enable = '1234'
 
+# Start SSH session
 session = pexpect.spawn('ssh ' + username + '@' + ip_address, encoding='utf-8', timeout=20)
-result = session.expect(['Password:', pexpect.TIMEOUT, pexpect.EOF])
-
-if result != 0:
-    print(f"Error: Unable to initiate an SSH session to {ip_address}. Please verify the network connection and credentials.")
-    exit()
-
+session.expect('Password:')
 session.sendline(password)
-result = session.expect(['>', pexpect.TIMEOUT, pexpect.EOF])
+session.expect('>')
 
-if result != 0:
-    print("Error: Authentication failed. Verify the password and try again.")
-    exit()
-
+# Enter enable mode
 session.sendline('enable')
-result = session.expect(['Password:', pexpect.TIMEOUT, pexpect.EOF])
-
-if result != 0:
-    print("Error: Failed to enter privileged EXEC mode. Check the enable mode settings.")
-    exit()
-
+session.expect('Password:')
 session.sendline(password_enable)
-result = session.expect(['#', pexpect.TIMEOUT, pexpect.EOF])
+session.expect('#')
 
-if result != 0:
-    print("Error: Enable mode authentication failed. Verify the enable password.")
-    exit()
-
+# Enter configuration mode and change hostname to 2fan
 session.sendline('configure terminal')
-result = session.expect([r'.\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
-
-if result != 0:
-    print("Error: Unable to enter configuration mode. Please check the device configuration.")
-    exit()
-
-session.sendline('hostname R1')
-result = session.expect([r'R1\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
-
-if result != 0:
-    print("Error: Failed to set the hostname. Verify the command and device response.")
-    exit()
-
+session.expect(r'\(config\)#')
+session.sendline('hostname 2fan')
+session.expect(r'2fan\(config\)#')
 session.sendline('exit')
-session.sendline('exit')
+session.expect('#')
 
+# Capture and save running configuration
+session.sendline('show running-config')
+session.expect('#', timeout=30)
+running_config = session.before  # Capture the command output
+
+with open('running_config.txt', 'w') as file:
+    file.write(running_config)
+
+# Exit the session
+session.sendline('exit')
+session.close()
+
+# Success message
 print("------------------------------------------------------")
 print("SSH session established and device configuration completed.")
 print(f"Device IP: {ip_address}")
 print(f"Username: {username}")
-print("Hostname successfully updated to 'R1'.")
+print("Hostname successfully updated to '2fan'.")
+print("Running configuration saved to 'running_config.txt'.")
 print("------------------------------------------------------")
 
-session.close()
