@@ -5,9 +5,15 @@ username = 'tufan'
 password = '123'
 password_enable = '1234'
 
-# Start SSH session
-session = pexpect.spawn('ssh ' + username + '@' + ip_address, encoding='utf-8', timeout=20)
-session.expect('Password:')
+# Start SSH session and handle SSH key acceptance
+session = pexpect.spawn(f'ssh {username}@{ip_address}', encoding='utf-8', timeout=20)
+result = session.expect(['yes/no', 'Password:', pexpect.TIMEOUT, pexpect.EOF])
+
+if result == 0:  # SSH key not recognized, auto-accept the key
+    session.sendline('yes')
+    session.expect('Password:')
+    
+# Enter login password
 session.sendline(password)
 session.expect('>')
 
@@ -17,23 +23,25 @@ session.expect('Password:')
 session.sendline(password_enable)
 session.expect('#')
 
-# Enter configuration mode and change hostname to 2fan
+# Enter configuration mode and set hostname to 2fan
 session.sendline('configure terminal')
 session.expect(r'\(config\)#')
 session.sendline('hostname 2fan')
-session.expect(r'2fan\(config\)#')
+session.expect(r'2fan\(config\)#')  # Ensure the prompt matches the new hostname
+
+# Exit configuration mode
 session.sendline('exit')
 session.expect('#')
 
 # Capture and save running configuration
 session.sendline('show running-config')
 session.expect('#', timeout=30)
-running_config = session.before  # Capture the command output
+running_config = session.before  # Capture the output
 
 with open('running_config.txt', 'w') as file:
     file.write(running_config)
 
-# Exit the session
+# Exit SSH session
 session.sendline('exit')
 session.close()
 
@@ -45,4 +53,3 @@ print(f"Username: {username}")
 print("Hostname successfully updated to '2fan'.")
 print("Running configuration saved to 'running_config.txt'.")
 print("------------------------------------------------------")
-
