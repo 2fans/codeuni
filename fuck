@@ -7,85 +7,74 @@ username = 'tufan'
 password = '123'
 enable_password = '123'
 
-# Start the SSH session and auto-accept host key
-session = pexpect.spawn(f"ssh {username}@{ip_address}", encoding='utf-8', timeout=20)
+# Start SSH session and auto-accept host key
+session = pexpect.spawn(f"ssh -o StrictHostKeyChecking=no {username}@{ip_address}", encoding='utf-8', timeout=30)
 
-# Step 1: Expect password or first-time host key prompt
-result = session.expect([
+# Step 1: Handle first-time SSH prompt or password
+i = session.expect([
     'Are you sure you want to continue connecting',
     '[Pp]assword:',
     pexpect.TIMEOUT,
     pexpect.EOF
 ])
-if result == 0:
-    # Accept the new host key
+if i == 0:
     session.sendline('yes')
-    result = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
-if result != 1:
+    i = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
+if i != 1:
     print(f"--- FAILURE! creating session for: {ip_address}")
     sys.exit(1)
 
 # Step 2: Send login password
 session.sendline(password)
-result = session.expect(['>', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print(f"--- FAILURE! entering password: {password}")
+# Now expect user exec (>), privileged exec (#), or direct enable password prompt
+i = session.expect(['>', '#', '[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
+if i == 0:
+    # got '>' -> user exec, enter enable
+    session.sendline('enable')
+    session.expect('[Pp]assword:')
+    session.sendline(enable_password)
+    session.expect('#')
+elif i == 1:
+    # got '#' -> already privileged, do nothing
+    pass
+elif i == 2:
+    # got direct password prompt -> assume enable
+    session.sendline(enable_password)
+    session.expect('#')
+else:
+    print('--- FAILURE! unexpected prompt after login')
     sys.exit(1)
 
-# Step 3: Enter privileged EXEC mode
-session.sendline('enable')
-result = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- Failure! entering enable mode')
-    sys.exit(1)
-
-# Step 4: Send enable password
-session.sendline(enable_password)
-result = session.expect(['#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- Failure! entering enable mode after sending password')
-    sys.exit(1)
-
-# Step 5: Copy flash configuration to running-config
+# Step 3: Copy flash configuration to running-config
 session.sendline('copy flash:CONFIG4 running-config')
-result = session.expect(['Destination filename', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- FAILURE! copy flash prompt not found')
-    sys.exit(1)
-# Accept default filename
+# prompt for destination filename
+session.expect('Destination filename')
+# accept default
 session.sendline('')
-result = session.expect(['#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- FAILURE! copying flash config failed')
-    sys.exit(1)
+session.expect('#')
 print('--- INFO: flash:CONFIG4 copied into running-config')
 
-# Step 6: Enter configuration mode
+# Step 4: Enter global config mode
 session.sendline('configure terminal')
-result = session.expect(['\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- Failure! entering config mode')
-    sys.exit(1)
+session.expect('\(config\)#')
 
-# Step 7: Change the hostname to R1
+# Step 5: Change hostname to R1
 session.sendline('hostname R1')
-result = session.expect(['R1\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- Failure! setting hostname')
-    sys.exit(1)
+session.expect('R1\(config\)#')
 
-# Step 8: Exit configuration and privileged modes
-session.sendline('exit')  # exit config mode
-session.sendline('exit')  # exit privileged EXEC
+# Step 6: Exit configuration and privileged EXEC modes
+session.sendline('end')  # back to privileged exec
+session.sendline('exit') # back to shell
 
-# Step 9: Display success message
+# Step 7: Display success message
 print('------------------------------------------------------')
-print('')
+print() 
 print(f'--- Success! connecting to: {ip_address}')
 print(f'---               Username: {username}')
 print(f'---               Password: {password}')
-print('')
+print() 
 print('------------------------------------------------------')
 
-# Step 10: Close the SSH session
+# Step 8: Close the SSH session
 session.close()
+
