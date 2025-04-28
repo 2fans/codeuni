@@ -11,53 +11,53 @@ enable_password = '123'
 ssh_command = f"ssh -o StrictHostKeyChecking=no {username}@{ip_address}"
 session = pexpect.spawn(ssh_command, encoding='utf-8', timeout=20)
 
-# 1. Expect password prompt
-result = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print(f"--- FAILURE: connecting to {ip_address}")
+# 1. Expect login password prompt
+index = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
+if index != 0:
+    print(f"--- FAILURE: SSH password prompt not found connecting to {ip_address}")
     sys.exit(1)
 
-# 2. Send user password
+# 2. Send login password
 session.sendline(password)
-result = session.expect(['>', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print("--- FAILURE: after sending password")
+# Expect user exec prompt '>' or privileged '#'
+index = session.expect(['[>#]', pexpect.TIMEOUT, pexpect.EOF])
+if index != 0:
+    print("--- FAILURE: after sending login password")
     sys.exit(1)
 
-# 3. Enter enable mode
+# 3. Enter enable mode if not already privileged
 session.sendline('enable')
-result = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print("--- FAILURE: entering enable mode")
+index = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
+if index != 0:
+    print("--- FAILURE: enable prompt not found")
     sys.exit(1)
 
 # 4. Send enable password
 session.sendline(enable_password)
-result = session.expect(['#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print("--- FAILURE: enable password rejected")
+index = session.expect(['#', pexpect.TIMEOUT, pexpect.EOF])
+if index != 0:
+    print("--- FAILURE: after sending enable password")
     sys.exit(1)
 
-# 5. Enter config mode
+# 5. Enter global config mode
 session.sendline('configure terminal')
-result = session.expect(['\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
+index = session.expect(['\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
+if index != 0:
     print("--- FAILURE: entering config mode")
     sys.exit(1)
 
 # 6. Change hostname to R1
 session.sendline('hostname R1')
-result = session.expect(['R1\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
+index = session.expect([r'R1\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
+if index != 0:
     print("--- FAILURE: setting hostname")
     sys.exit(1)
 
-# 7. Exit config and enable modes
-session.sendline('exit')  # exit config mode
-session.sendline('exit')  # exit privileged mode
+# 7. Exit config and privileged modes
+session.sendline('end')  # exit configuration mode to privileged exec
+session.sendline('exit') # exit privileged exec
 
 # 8. Close SSH session
 session.close()
 
-print('--- SUCCESS: SSH to', ip_address, 'as', username)
-
+print(f"--- SUCCESS: SSH to {ip_address} as {username}")
