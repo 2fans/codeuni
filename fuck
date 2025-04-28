@@ -1,44 +1,91 @@
 import pexpect
 import sys
 
-# Device connection details
+# Define connection variables
 ip_address = '192.168.56.101'
 username = 'tufan'
 password = '123'
 enable_password = '123'
 
-# Start SSH session (auto accept host key)
-ssh_command = f"ssh -o StrictHostKeyChecking=no {username}@{ip_address}"
-session = pexpect.spawn(ssh_command, encoding='utf-8', timeout=30)
+# Start the SSH session and auto-accept host key
+session = pexpect.spawn(f"ssh {username}@{ip_address}", encoding='utf-8', timeout=20)
 
-# 1. SSH login
-i = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
-if i != 0:
-    print(f"--- FAILURE: no password prompt connecting to {ip_address}")
+# Step 1: Expect password or first-time host key prompt
+result = session.expect([
+    'Are you sure you want to continue connecting',
+    '[Pp]assword:',
+    pexpect.TIMEOUT,
+    pexpect.EOF
+])
+if result == 0:
+    # Accept the new host key
+    session.sendline('yes')
+    result = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
+if result != 1:
+    print(f"--- FAILURE! creating session for: {ip_address}")
     sys.exit(1)
+
+# Step 2: Send login password
 session.sendline(password)
-
-# 2. Enter enable mode
-session.expect('>')
-session.sendline('enable')
-i = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
-if i != 0:
-    print("--- FAILURE: no enable prompt")
+result = session.expect(['>', pexpect.TIMEOUT, pexpect.EOF])
+if result != 0:
+    print(f"--- FAILURE! entering password: {password}")
     sys.exit(1)
+
+# Step 3: Enter privileged EXEC mode
+session.sendline('enable')
+result = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
+if result != 0:
+    print('--- Failure! entering enable mode')
+    sys.exit(1)
+
+# Step 4: Send enable password
 session.sendline(enable_password)
-session.expect('#')
+result = session.expect(['#', pexpect.TIMEOUT, pexpect.EOF])
+if result != 0:
+    print('--- Failure! entering enable mode after sending password')
+    sys.exit(1)
 
-# 3. Enter config mode
+# Step 5: Copy flash configuration to running-config
+session.sendline('copy flash:CONFIG4 running-config')
+result = session.expect(['Destination filename', pexpect.TIMEOUT, pexpect.EOF])
+if result != 0:
+    print('--- FAILURE! copy flash prompt not found')
+    sys.exit(1)
+# Accept default filename
+session.sendline('')
+result = session.expect(['#', pexpect.TIMEOUT, pexpect.EOF])
+if result != 0:
+    print('--- FAILURE! copying flash config failed')
+    sys.exit(1)
+print('--- INFO: flash:CONFIG4 copied into running-config')
+
+# Step 6: Enter configuration mode
 session.sendline('configure terminal')
-session.expect('\(config\)#')
+result = session.expect(['\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
+if result != 0:
+    print('--- Failure! entering config mode')
+    sys.exit(1)
 
-# 4. Change hostname to R1
+# Step 7: Change the hostname to R1
 session.sendline('hostname R1')
-session.expect('R1\(config\)#')
+result = session.expect(['R1\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
+if result != 0:
+    print('--- Failure! setting hostname')
+    sys.exit(1)
 
-# 5. Cleanup and exit
-session.sendline('end')  # back to privileged exec
-session.sendline('exit') # back to shell
+# Step 8: Exit configuration and privileged modes
+session.sendline('exit')  # exit config mode
+session.sendline('exit')  # exit privileged EXEC
+
+# Step 9: Display success message
+print('------------------------------------------------------')
+print('')
+print(f'--- Success! connecting to: {ip_address}')
+print(f'---               Username: {username}')
+print(f'---               Password: {password}')
+print('')
+print('------------------------------------------------------')
+
+# Step 10: Close the SSH session
 session.close()
-
-print(f"--- SUCCESS: configured hostname to R1 on {ip_address}")
