@@ -3,11 +3,11 @@ import sys
 
 # Device connection details
 ip_address = '192.168.56.101'
-username = 'prne'
-password = 'cisco123!'
-enable_password = 'class123!'
+username = 'tufan'
+password = '123'
+enable_password = '123'
 
-# Start SSH session (auto accept key)
+# Start SSH session (auto accept host key)
 ssh_command = f"ssh -o StrictHostKeyChecking=no {username}@{ip_address}"
 session = pexpect.spawn(ssh_command, encoding='utf-8', timeout=20)
 
@@ -52,11 +52,12 @@ if result != 0:
     print("--- FAILURE: setting hostname")
     sys.exit(1)
 
-# 7. Exit config and enable mode
-session.sendline('exit')       # exit config mode
-session.sendline('exit')       # exit privileged mode
+# 7. Exit config and enable modes
+session.sendline('exit')  # exit config mode
+session.sendline('exit')  # exit privileged mode
 
-# 8. Close session
+# 8. Close SSH session
 session.close()
 
 print('--- SUCCESS: SSH to', ip_address, 'as', username)
+
