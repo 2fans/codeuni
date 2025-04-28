@@ -8,11 +8,11 @@ PASSWORD = '123'
 # --- Insecure connection via Telnet (Netmiko) ---
 def telnet_connection():
     device_telnet = {
-        'device_type': 'cisco_ios_telnet',  # Telnet driver
+        'device_type': 'cisco_ios_telnet',
         'host': HOST,
         'username': USERNAME,
         'password': PASSWORD,
-        'secret': PASSWORD,  # enable secret
+        'secret': PASSWORD,
     }
     net_connect = ConnectHandler(**device_telnet)
     print(f"[Telnet] Connected to {HOST}")
@@ -30,13 +30,22 @@ def telnet_connection():
         f.write(running_cfg)
     print("[Telnet] Running config saved to telnet_running_config.txt")
 
+    # Interactive CLI after automation
+    print("[Telnet] Enter additional commands or type 'exit' to close.")
+    while True:
+        cmd = input(f"{HOST} (telnet)> ")
+        if cmd.strip().lower() in ('exit', 'quit'):
+            break
+        output = net_connect.send_command(cmd)
+        print(output)
+
     net_connect.disconnect()
     print("[Telnet] Connection closed")
 
 # --- Secure connection via SSH ---
 def ssh_connection():
     device_ssh = {
-        'device_type': 'cisco_ios',  # SSH driver
+        'device_type': 'cisco_ios',
         'host': HOST,
         'username': USERNAME,
         'password': PASSWORD,
@@ -57,6 +66,15 @@ def ssh_connection():
     with open('ssh_running_config.txt', 'w') as f:
         f.write(running_cfg)
     print("[SSH] Running config saved to ssh_running_config.txt")
+
+    # Interactive CLI after automation
+    print("[SSH] Enter additional commands or type 'exit' to close.")
+    while True:
+        cmd = input(f"{HOST} (ssh)> ")
+        if cmd.strip().lower() in ('exit', 'quit'):
+            break
+        output = net_connect.send_command(cmd)
+        print(output)
 
     net_connect.disconnect()
     print("[SSH] Connection closed")
