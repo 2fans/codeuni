@@ -1,96 +1,147 @@
 from netmiko import ConnectHandler
+import telnetlib
+import time
 
-# --- Device credentials ---
-HOST = '192.168.56.101'
-USERNAME = 'tufan'
-PASSWORD = '123'
+host = "192.168.56.101"
+username = "tufan"
+password = "123"
 
-# --- Insecure connection via Telnet (Netmiko) ---
-def telnet_connection():
-    device_telnet = {
-        'device_type': 'cisco_ios_telnet',
-        'host': HOST,
-        'username': USERNAME,
-        'password': PASSWORD,
-        'secret': PASSWORD,
-    }
-    net_connect = ConnectHandler(**device_telnet)
-    print(f"[Telnet] Connected to {HOST}")
-
-    # Elevate to privileged EXEC
-    net_connect.enable()
-
-    # Change hostname to tufan
-    net_connect.send_config_set(['hostname tufan'])
-    print("[Telnet] Hostname changed to tufan")
-
-    # Retrieve running-config
-    running_cfg = net_connect.send_command('show running-config')
-    with open('telnet_running_config.txt', 'w') as f:
-        f.write(running_cfg)
-    print("[Telnet] Running config saved to telnet_running_config.txt")
-
-    # Interactive CLI after automation
-    print("[Telnet] Enter additional commands or type 'exit' to close.")
-    while True:
-        cmd = input(f"{HOST} (telnet)> ")
-        if cmd.strip().lower() in ('exit', 'quit'):
-            break
-        output = net_connect.send_command(cmd)
-        print(output)
-
-    net_connect.disconnect()
-    print("[Telnet] Connection closed")
-
-# --- Secure connection via SSH ---
-def ssh_connection():
-    device_ssh = {
+def netmiko_connection():
+    device = {
         'device_type': 'cisco_ios',
-        'host': HOST,
-        'username': USERNAME,
-        'password': PASSWORD,
-        'secret': PASSWORD,
+        'host': host,
+        'username': username,
+        'password': password,
     }
-    net_connect = ConnectHandler(**device_ssh)
-    print(f"[SSH] Connected to {HOST}")
 
-    # Elevate to privileged EXEC
-    net_connect.enable()
+    try:
+        connection = ConnectHandler(**device)
+        print("connected to " + host)
+ #task2--------------------------------------------------------------       
+        #3 THINGS OFF THE GUIDE
+        connection.send_config_set([
+            "service password-encryption",
+            "no service pad",
+            "no cdp run",
+            "logging buffered 4096",  #SYSLOG ENABLED
+            "logging console" #message will be logged on the console now
+        ])
+        print("3 THINGS FROM THE CISCO HARDENING GUIDE ADDED")
+#task2-------------------------------------------------------------------
+#task3-------------------------------------------------------------------------------
+        loopback_commands = [
+            "interface Loopback0",                     #creates Loopback0
+            "ip address 192.168.100.1 255.255.255.0", #assigns IP to Loopback
+            "no shutdown"
+            "exit"
+        ]
+        connection.send_config_set(loopback_commands)
+        print("Loopback interface configured.")
+        
+        ospf_commands = [
+            "router ospf 1",                              #enables ospf
+            "network 192.168.1.0 0.0.0.255 area 0",      #advertises gigabitEthernet2
+            "network 192.168.100.0 0.0.0.255 area 0",    #advertise loopback0
+            "exit"
+        ]
+        connection.send_config_set(ospf_commands)
+        print("OSPF routing protocol configured.")
+#task3-----------------------------------------------------
+        running_config = connection.send_command("show running-config")
+        time.sleep(1)
+        print(running_config)
 
-    # Change hostname to tufan
-    net_connect.send_config_set(['hostname tufan'])
-    print("[SSH] Hostname changed to tufan")
+        with open("config_number_two.txt", "w") as file:
+            file.write(running_config)
+        print("running configuration saved locally as config number two")
 
-    # Retrieve running-config
-    running_cfg = net_connect.send_command('show running-config')
-    with open('ssh_running_config.txt', 'w') as f:
-        f.write(running_cfg)
-    print("[SSH] Running config saved to ssh_running_config.txt")
+        while True:
+            command = input("CSR1kv> ")
+            if command.lower() in ["exit", "quit"]:
+                print("exiting")
+                connection.disconnect()
+                break
 
-    # Interactive CLI after automation
-    print("[SSH] Enter additional commands or type 'exit' to close.")
-    while True:
-        cmd = input(f"{HOST} (ssh)> ")
-        if cmd.strip().lower() in ('exit', 'quit'):
-            break
-        output = net_connect.send_command(cmd)
+            output = connection.send_command_timing(command)
+
+            if "Password:" in output:
+                output += connection.send_command_timing(password)
+
+            if command.lower() == "enable":
+                if "Password:" in output:
+                    output += connection.send_command_timing(password + "\n")
+                output = connection.send_command_timing("", delay_factor=2)
+                prompt = connection.find_prompt()
+                if prompt.endswith("#"):
+                    print("entered privileged exec mode")
+                else:
+                    print("errored again aaaa")
+
+            time.sleep(1)
+            print(output)
+
+    except Exception as e:
+        print("error: " + str(e))
+
+    finally:
+        print("connection closed")
+
+def telnet_connection():
+    try:
+        tn = telnetlib.Telnet(host)
+        print("connected to " + host)
+        
+        tn.read_until(b"Username:")
+        tn.write(username.encode() + b"\n")
+        
+        tn.read_until(b"Password:")
+        tn.write(password.encode() + b"\n")
+        
+        time.sleep(1)
+        output = tn.read_until(b">", timeout=5).decode()
         print(output)
 
-    net_connect.disconnect()
-    print("[SSH] Connection closed")
+        tn.write(b"show running-config\n")
+        
+        time.sleep(3)
+        running_config = tn.read_until(b">", timeout=10).decode()
+        print(running_config)
+        
+        with open("config_number_one.txt", "w") as file:
+            file.write(running_config)
+        print("running configuration saved locally as config number one")
 
-# --- Main execution ---
-def main():
-    print("Select connection method:")
-    print("1) Telnet (insecure)")
-    print("2) SSH   (secure)")
-    choice = input("Enter 1 or 2: ")
-    if choice == '1':
-        telnet_connection()
-    elif choice == '2':
-        ssh_connection()
-    else:
-        print("Invalid choice. Use 1 or 2.")
+        while True:
+            command = input(output.splitlines()[-1])
+            if command.lower() in ["exit", "quit"]:
+                print("exiting")
+                tn.write(b"exit\n")
+                break
+            
+            tn.write(command.encode() + b"\n")
+            time.sleep(1)
+            output = tn.read_until(b">", timeout=5).decode()
+            print(output)
 
-if __name__ == '__main__':
-    main()
+    except:
+        print("error.")
+
+    finally:
+        try:
+            tn.close()
+        except:
+            pass
+        print("connection closed")
+
+
+print("do you want ssh or netmiko connection?")
+print("1 ssh (telnet)")
+print("2 netmiko")
+choice = input("enter your choice (1 or 2): ")
+
+if choice == "1":
+    telnet_connection()
+elif choice == "2":
+    netmiko_connection()
+else:
+    print("type in 1 or 2 not 3")
