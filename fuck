@@ -1,3 +1,4 @@
+
 import pexpect
 import sys
 
@@ -17,15 +18,17 @@ if index != 0:
     print(f"--- FAILURE: SSH password prompt not found connecting to {ip_address}")
     sys.exit(1)
 
-# 2. Send login password
+# 2. Send login password and enter enable mode
 session.sendline(password)
-# Expect user exec prompt '>' or privileged '#'
-index = session.expect(['[>#]', pexpect.TIMEOUT, pexpect.EOF])
+session.sendline('enable')
+
+# 3. Expect enable password prompt
+index = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
 if index != 0:
-    print("--- FAILURE: after sending login password")
+    print("--- FAILURE: enable prompt not found")
     sys.exit(1)
 
-# 3. Enter enable mode if not already privileged
+# 4. Send enable password Enter enable mode if not already privileged
 session.sendline('enable')
 index = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
 if index != 0:
