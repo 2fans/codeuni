@@ -2,46 +2,62 @@ from netmiko import ConnectHandler
 import telnetlib
 import time
 
-# === Device credentials ===
+# Device details
 HOST = '192.168.56.101'
 USERNAME = 'tufan'
 PASSWORD = '123'
 
-# --- Insecure connection via Telnet ---
+# Insecure connection using Telnet
 def telnet_connection():
-    # Connect
-    tn = telnetlib.Telnet(HOST)
-    print(f"[Telnet] Connected to {HOST}")
+    try:
+        tn = telnetlib.Telnet(HOST)
+        print(f"[Telnet] Connected to {HOST}")
 
-    # Login
-    tn.read_until(b"Username:")
-    tn.write(USERNAME.encode('ascii') + b"\n")
-    tn.read_until(b"Password:")
-    tn.write(PASSWORD.encode('ascii') + b"\n")
+        # Login
+        tn.read_until(b"Username:", timeout=5)
+        tn.write(USERNAME.encode('ascii') + b"\n")
+        tn.read_until(b"Password:", timeout=5)
+        tn.write(PASSWORD.encode('ascii') + b"\n")
 
-    # Enter enable mode
-    tn.write(b"enable\n")
-    tn.write(PASSWORD.encode('ascii') + b"\n")
+        # Wait for user exec prompt
+        tn.read_until(b">", timeout=5)
 
-    # Change hostname
-    tn.write(b"configure terminal\n")
-    tn.write(b"hostname TelnetDevice\n")
-    tn.write(b"end\n")
-    print("[Telnet] Hostname changed to TelnetDevice")
+        # Enter privileged exec
+        tn.write(b"enable\n")
+        tn.read_until(b"Password:", timeout=5)
+        tn.write(PASSWORD.encode('ascii') + b"\n")
+        tn.read_until(b"#", timeout=5)
 
-    # Show running-config and save locally
-    tn.write(b"show running-config\n")
-    time.sleep(1)
-    output = tn.read_very_eager().decode('ascii')
-    with open("telnet_running_config.txt", "w") as f:
-        f.write(output)
-    print("[Telnet] Running config saved to telnet_running_config.txt")
+        # Change hostname
+        tn.write(b"configure terminal\n")
+        tn.read_until(b"(config)#", timeout=5)
+        tn.write(b"hostname TelnetDevice\n")
+        tn.read_until(b"(config)#", timeout=5)
+        tn.write(b"end\n")
+        tn.read_until(b"#", timeout=5)
+        print("[Telnet] Hostname changed to TelnetDevice")
 
-    # Close
-    tn.write(b"exit\n")
-    tn.close()
+        # Show running configuration
+        tn.write(b"show running-config\n")
+        time.sleep(2)
+        output = tn.read_very_eager().decode('ascii')
 
-# --- Secure connection via SSH (Netmiko) ---
+        # Save locally
+        with open("telnet_running_config.txt", "w") as f:
+            f.write(output)
+        print("[Telnet] Running config saved to telnet_running_config.txt")
+
+    except Exception as e:
+        print(f"[Telnet] Error: {e}")
+    finally:
+        try:
+            tn.write(b"exit\n")
+            tn.close()
+        except:
+            pass
+        print("[Telnet] Connection closed")
+
+# Secure connection using SSH (Netmiko)
 def ssh_connection():
     device = {
         'device_type': 'cisco_ios',
@@ -50,25 +66,35 @@ def ssh_connection():
         'password': PASSWORD,
         'secret': PASSWORD,  # enable password
     }
-    conn = ConnectHandler(**device)
-    print(f"[SSH] Connected to {HOST}")
+    try:
+        conn = ConnectHandler(**device)
+        print(f"[SSH] Connected to {HOST}")
 
-    # Enter enable
-    conn.enable()
+        # Enter enable mode
+        conn.enable()
 
-    # Change hostname
-    conn.send_config_set(["hostname SSHDevice"])
-    print("[SSH] Hostname changed to SSHDevice")
+        # Change hostname
+        conn.send_config_set(["hostname SSHDevice"])
+        print("[SSH] Hostname changed to SSHDevice")
 
-    # Show running-config and save locally
-    output = conn.send_command("show running-config")
-    with open("ssh_running_config.txt", "w") as f:
-        f.write(output)
-    print("[SSH] Running config saved to ssh_running_config.txt")
+        # Show running configuration
+        output = conn.send_command("show running-config")
 
-    conn.disconnect()
+        # Save locally
+        with open("ssh_running_config.txt", "w") as f:
+            f.write(output)
+        print("[SSH] Running config saved to ssh_running_config.txt")
 
-# --- Main menu ---
+    except Exception as e:
+        print(f"[SSH] Error: {e}")
+    finally:
+        try:
+            conn.disconnect()
+        except:
+            pass
+        print("[SSH] Connection closed")
+
+# Main menu
 def main():
     print("Choose connection method:")
     print("1) Telnet (insecure)")
