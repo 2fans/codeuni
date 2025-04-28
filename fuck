@@ -1,77 +1,86 @@
-import pexpect
-import sys
+from netmiko import ConnectHandler
+import telnetlib
+import time
 
-# Define variables from lab PDF
-ip_address = '192.168.56.101'
-username = 'prne'
-password = 'cisco123!'
-enable_password = 'class123!'
+# === Device credentials ===
+HOST = '192.168.56.101'
+USERNAME = 'tufan'
+PASSWORD = '123'
 
-# Create the SSH session
-session = pexpect.spawn(f"ssh {username}@{ip_address}", encoding='utf-8', timeout=20)
+# --- Insecure connection via Telnet ---
+def telnet_connection():
+    # Connect
+    tn = telnetlib.Telnet(HOST)
+    print(f"[Telnet] Connected to {HOST}")
 
-# Step 1: Expect password prompt or host key message
-result = session.expect([
-    'Are you sure you want to continue connecting',
-    '[Pp]assword:',
-    pexpect.TIMEOUT,
-    pexpect.EOF
-])
-if result == 0:
-    # accept host key
-    session.sendline('yes')
-    result = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
-if result != 1:
-    print(f"--- FAILURE! creating session for: {ip_address}")
-    sys.exit(1)
+    # Login
+    tn.read_until(b"Username:")
+    tn.write(USERNAME.encode('ascii') + b"\n")
+    tn.read_until(b"Password:")
+    tn.write(PASSWORD.encode('ascii') + b"\n")
 
-# Step 2: Send user password
-session.sendline(password)
-result = session.expect(['>', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print(f"--- FAILURE! entering password: {password}")
-    sys.exit(1)
+    # Enter enable mode
+    tn.write(b"enable\n")
+    tn.write(PASSWORD.encode('ascii') + b"\n")
 
-# Step 3: Enter privileged exec
-session.sendline('enable')
-result = session.expect(['[Pp]assword:', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- Failure! entering enable mode')
-    sys.exit(1)
+    # Change hostname
+    tn.write(b"configure terminal\n")
+    tn.write(b"hostname TelnetDevice\n")
+    tn.write(b"end\n")
+    print("[Telnet] Hostname changed to TelnetDevice")
 
-# Step 4: Send enable password
-session.sendline(enable_password)
-result = session.expect(['#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- Failure! entering enable mode after sending password')
-    sys.exit(1)
+    # Show running-config and save locally
+    tn.write(b"show running-config\n")
+    time.sleep(1)
+    output = tn.read_very_eager().decode('ascii')
+    with open("telnet_running_config.txt", "w") as f:
+        f.write(output)
+    print("[Telnet] Running config saved to telnet_running_config.txt")
 
-# Step 5: Enter config mode
-session.sendline('configure terminal')
-result = session.expect([r'\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- Failure! entering config mode')
-    sys.exit(1)
+    # Close
+    tn.write(b"exit\n")
+    tn.close()
 
-# Step 6: Change hostname to R1
-session.sendline('hostname R1')
-result = session.expect([r'R1\(config\)#', pexpect.TIMEOUT, pexpect.EOF])
-if result != 0:
-    print('--- Failure! setting hostname')
-    sys.exit(1)
+# --- Secure connection via SSH (Netmiko) ---
+def ssh_connection():
+    device = {
+        'device_type': 'cisco_ios',
+        'host': HOST,
+        'username': USERNAME,
+        'password': PASSWORD,
+        'secret': PASSWORD,  # enable password
+    }
+    conn = ConnectHandler(**device)
+    print(f"[SSH] Connected to {HOST}")
 
-# Step 7: Exit config and privileged exec modes
-session.sendline('exit')  # exit config
-session.sendline('exit')  # exit privileged exec
+    # Enter enable
+    conn.enable()
 
-# Step 8: Display success
-print('------------------------------------------------------')
-print()  
-print(f'--- Success! connecting to: {ip_address}')
-print(f'---               Username: {username}')
-print(f'---               Password: {password}')
-print()  
-print('------------------------------------------------------')
+    # Change hostname
+    conn.send_config_set(["hostname SSHDevice"])
+    print("[SSH] Hostname changed to SSHDevice")
 
-# Step 9: Close session
-session.close()
+    # Show running-config and save locally
+    output = conn.send_command("show running-config")
+    with open("ssh_running_config.txt", "w") as f:
+        f.write(output)
+    print("[SSH] Running config saved to ssh_running_config.txt")
+
+    conn.disconnect()
+
+# --- Main menu ---
+def main():
+    print("Choose connection method:")
+    print("1) Telnet (insecure)")
+    print("2) SSH   (secure)")
+    choice = input("Enter 1 or 2: ")
+
+    if choice == '1':
+        telnet_connection()
+    elif choice == '2':
+        ssh_connection()
+    else:
+        print("Invalid choice. Please enter 1 or 2.")
+
+if __name__ == '__main__':
+    main()
