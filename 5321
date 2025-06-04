@@ -1,0 +1,111 @@
+import pexpect
+import sys
+
+# --- Configuration ---
+ip_address = '192.168.56.101'
+username = 'prne'
+password = 'cisco123!'
+enable_password = 'class123!'
+config_output_file = 'running_config_R1.txt'
+
+def ssh_connection():
+    print("\n[+] Establishing SSH Connection...\n")
+    session = pexpect.spawn(f'ssh {username}@{ip_address}', encoding='utf-8', timeout=20)
+
+    result = session.expect(['yes/no', 'Password:', pexpect.TIMEOUT])
+    if result == 0:
+        session.sendline('yes')
+        session.expect('Password:')
+    elif result == 2:
+        print("[!] Timeout while waiting for SSH password prompt.")
+        session.close()
+        return
+
+    session.sendline(password)
+    session.expect('>')
+
+    session.sendline('enable')
+    session.expect('Password:')
+    session.sendline(enable_password)
+    session.expect('#')
+
+    session.sendline('configure terminal')
+    session.expect(r'\(config\)#')
+
+    session.sendline('hostname R1')
+    session.expect(r'R1\(config\)#')
+
+    session.sendline('end')
+    session.expect('#')
+
+    # Save running config
+    session.sendline('terminal length 0')
+    session.expect('#')
+    session.sendline('show running-config')
+    session.expect('#')
+    output = session.before
+
+    with open(config_output_file, 'w') as f:
+        f.write(output)
+
+    print(f"\n[+] Hostname changed and running config saved to '{config_output_file}'\n")
+
+    session.sendline('exit')
+    session.close()
+
+def telnet_connection():
+    print("\n[+] Establishing Telnet Connection...\n")
+    session = pexpect.spawn(f'telnet {ip_address}', encoding='utf-8', timeout=20)
+
+    result = session.expect(['Username:', pexpect.TIMEOUT])
+    if result != 0:
+        print("[!] Timeout or unexpected response when starting Telnet session.")
+        session.close()
+        return
+
+    session.sendline(username)
+    session.expect('Password:')
+    session.sendline(password)
+    session.expect('>')
+
+    session.sendline('enable')
+    session.expect('Password:')
+    session.sendline(enable_password)
+    session.expect('#')
+
+    session.sendline('configure terminal')
+    session.expect(r'\(config\)#')
+
+    session.sendline('hostname R1')
+    session.expect(r'R1\(config\)#')
+
+    session.sendline('end')
+    session.expect('#')
+
+    print("\n[+] Hostname changed via Telnet (no config saved).\n")
+
+    session.sendline('exit')
+    session.close()
+
+def menu():
+    print("----- Network Connection Script -----")
+    print("1. Connect via SSH (Secure)")
+    print("2. Connect via Telnet (Insecure)")
+    print("3. Exit")
+
+    choice = input("Enter your choice (1/2/3): ")
+
+    if choice == '1':
+        ssh_connection()
+    elif choice == '2':
+        telnet_connection()
+    elif choice == '3':
+        print("Exiting...")
+        sys.exit()
+    else:
+        print("Invalid choice. Try again.\n")
+        menu()
+
+# Run the menu
+if __name__ == '__main__':
+    menu()
